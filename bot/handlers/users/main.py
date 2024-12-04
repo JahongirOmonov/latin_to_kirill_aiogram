@@ -45,6 +45,9 @@ async def sms_for_admin(message: types.Message, bot: Bot, state: FSMContext):
 
 #/sms(for admin)
 async def sms_received(message: types.Message, state: FSMContext, bot: Bot):
+    if message.text.startswith("/"):
+        await message.answer("Siz hozir statening ichidasiz ")
+        return
     await state.update_data(sms=message.text)
     data = await state.get_data()
     user = TelegramProfile.objects.filter(chat_id=message.from_user.id).first()
@@ -65,6 +68,7 @@ async def sms_received(message: types.Message, state: FSMContext, bot: Bot):
         except Exception as e:
             print(f"Xatolik yuz berdi: {e}")
     await message.answer("Xabar muvaffaqiyatli yuborildi✅. Iltimos, admin javobini kuting...")
+    await state.clear()
 
 async def echo_photo(message: types.Message):
     file_id = message.photo[-1].file_id
