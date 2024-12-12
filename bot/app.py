@@ -8,8 +8,11 @@ from aiogram.client.bot import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
+from bot.middlewares import BanMiddleware, RequiredChannelsMiddleware
 
 from bot import handlers
+from bot.middlewares.main import RequiredChannelsMiddleware
 
 
 def setup_handlers(dp: Dispatcher) -> None:
@@ -18,15 +21,24 @@ def setup_handlers(dp: Dispatcher) -> None:
 
 
 def setup_middlewares(dp: Dispatcher) -> None:
-    pass
+    dp.update.middleware(RequiredChannelsMiddleware())
+    dp.update.middleware(BanMiddleware())
 
 
 async def setup_aiogram(dp: Dispatcher) -> None:
     setup_handlers(dp)
     setup_middlewares(dp)
 
+async def set_bot_commands(bot: Bot):
+    commands = [
+        BotCommand(command="start", description="Botni ishga tushirish"),
+        BotCommand(command="sms", description="Adminga xabar yuborish"),
+    ]
+    await bot.set_my_commands(commands)
+
 
 async def aiogram_on_startup_polling(dispatcher: Dispatcher, bot: Bot) -> None:
+    await set_bot_commands(bot)
     await setup_aiogram(dispatcher)
     await bot.delete_webhook(drop_pending_updates=True)
 

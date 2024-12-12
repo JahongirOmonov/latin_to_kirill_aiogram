@@ -1,10 +1,14 @@
 import asyncio
+
+from aiogram.enums import parse_mode
 from celery import shared_task
 from src.settings import API_TOKEN
 from .models import TelegramProfile
 from utils.choices import Role
 import logging
-
+import pytesseract
+from PIL import Image
+from aiogram import html
 
 async def send_messages(bot_token, admin_chat_id):
     bot = Bot(token=bot_token)
@@ -95,15 +99,23 @@ import requests
 from .models import Archive
 
 @shared_task
-def send_echo_photo(file_id, caption, chat_id, message_id, user_id, first_name, username):
+def send_echo_photo(file_id, caption, chat_id, message_id, user_id, first_name, username, text_of_img):
 
-    message_text = caption
+    if caption:
+        message_text = caption
+    else:
+        message_text = text_of_img
+
+
+    # message_text = caption
     isLatin_orCirill = True
     z = ""
 
     # Kirill va Latin turlarini tekshirish
-    if message_text.isascii():
+    if message_text.isascii() or 'o‘' not in message_text or 'O‘' not in message_text or 'oʻ' not in message_text or 'Oʻ' not in message_text or 'g‘' not in message_text or 'G‘' not in message_text or 'gʻ' not in message_text or 'Gʻ' not in message_text:
         z = to_cyrillic(message_text)  # Kirillga o'girish
+        if z == message_text:
+            z = to_latin(message_text)
     else:
         if contains_cyrillic(message_text):  # Agar Kirill matni bo'lsa
             z = to_latin(message_text)  # Lotinga o'girish
@@ -128,7 +140,7 @@ def send_echo_photo(file_id, caption, chat_id, message_id, user_id, first_name, 
     else:
         # Matnni tarjima qilish va qayta yuborish
         url = f"https://api.telegram.org/bot{API_TOKEN}/sendPhoto"
-        payload = {"photo":file_id, "chat_id": chat_id, "caption": z, "reply_to_message_id": message_id}
+        payload = {"photo":file_id, "chat_id": chat_id, "caption": html.code(z), "reply_to_message_id": message_id, "parse_mode": "HTML"}
         requests.post(url, json=payload)
 
         # Admin uchun xabar
@@ -143,6 +155,9 @@ def send_echo_photo(file_id, caption, chat_id, message_id, user_id, first_name, 
 
 
 
+
+
+
 @shared_task
 def send_echo_video(file_id, caption, chat_id, message_id, user_id, first_name, username):
     message_text = caption
@@ -150,8 +165,10 @@ def send_echo_video(file_id, caption, chat_id, message_id, user_id, first_name, 
     z = ""
 
     # Kirill va Latin turlarini tekshirish
-    if message_text.isascii():
+    if message_text.isascii() or 'o‘' not in message_text or 'O‘' not in message_text or 'oʻ' not in message_text or 'Oʻ' not in message_text or 'g‘' not in message_text or 'G‘' not in message_text or 'gʻ' not in message_text or 'Gʻ' not in message_text:
         z = to_cyrillic(message_text)  # Kirillga o'girish
+        if z == message_text:
+            z = to_latin(message_text)
     else:
         if contains_cyrillic(message_text):  # Agar Kirill matni bo'lsa
             z = to_latin(message_text)  # Lotinga o'girish
@@ -177,7 +194,7 @@ def send_echo_video(file_id, caption, chat_id, message_id, user_id, first_name, 
     else:
         # Matnni tarjima qilish va qayta yuborish
         url = f"https://api.telegram.org/bot{API_TOKEN}/sendVideo"
-        payload = {"video": file_id, "chat_id": chat_id, "caption": z, "reply_to_message_id": message_id}
+        payload = {"video": file_id, "chat_id": chat_id, "caption": html.code(z), "reply_to_message_id": message_id, "parse_mode": "HTML"}
         requests.post(url, json=payload)
 
         # Admin uchun xabar
@@ -196,12 +213,15 @@ def send_echo_video(file_id, caption, chat_id, message_id, user_id, first_name, 
 
 @shared_task
 def send_echo_celery(chat_id, message_text, user_id, first_name, username, message_id):
+
     isLatin_orCirill = True
     z = ""
 
     # Kirill va Latin turlarini tekshirish
-    if message_text.isascii():
+    if message_text.isascii() or 'o‘' not in message_text or 'O‘' not in message_text or 'oʻ' not in message_text or 'Oʻ' not in message_text or 'g‘' not in message_text or 'G‘' not in message_text or 'gʻ' not in message_text or 'Gʻ' not in message_text:
         z = to_cyrillic(message_text)  # Kirillga o'girish
+        if z == message_text:
+            z = to_latin(message_text)
     else:
         if contains_cyrillic(message_text):  # Agar Kirill matni bo'lsa
             z = to_latin(message_text)  # Lotinga o'girish
@@ -216,7 +236,7 @@ def send_echo_celery(chat_id, message_text, user_id, first_name, username, messa
         requests.post(url, json=payload)
 
         # Admin uchun xabar
-        range = f"ID: {user_id}   |   Name: {first_name}   |   Username: @{username}\nUTF-8 ga mos kelmaydigan matn kiritdi:⬇️\n\n{text}"
+        range = f"ID: {user_id}   |   Name: {first_name}   |   Username: @{username}\nUTF-8 ga mos kelmaydigan matn kiritdi:⬇️\n\n{z}"
         url = f"https://api.telegram.org/bot{API_TOKEN}/sendMessage"
         payload = {"chat_id": 6956376313, "text": range}
         requests.post(url, json=payload)
@@ -227,7 +247,7 @@ def send_echo_celery(chat_id, message_text, user_id, first_name, username, messa
     else:
         # Matnni tarjima qilish va qayta yuborish
         url = f"https://api.telegram.org/bot{API_TOKEN}/sendMessage"
-        payload = {"chat_id": chat_id, "text": z, "reply_to_message_id":message_id}
+        payload = {"chat_id": chat_id, "text": html.code(z), "reply_to_message_id":message_id, "parse_mode": "HTML"}
         requests.post(url, json=payload)
 
         # Admin uchun xabar
@@ -238,6 +258,11 @@ def send_echo_celery(chat_id, message_text, user_id, first_name, username, messa
 
         # Arxivga saqlash
         Archive.objects.create(title=message_text, author_id=user_id)
+
+
+
+
+
 
 
 

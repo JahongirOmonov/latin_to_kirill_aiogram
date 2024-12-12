@@ -4,7 +4,7 @@ from aiogram.fsm.state import StatesGroup, State
 class Messages(StatesGroup):
     messages_for_user = State()
 
-class Message(StatesGroup):
+class MessageStates(StatesGroup):
     id_of_user = State()
     message_for_user = State()
 

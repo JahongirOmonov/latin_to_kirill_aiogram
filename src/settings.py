@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'ckeditor',
     'django_celery_beat',
     'redis',
+    'import_export',
     # LOCAL
     'common',
 

@@ -26,6 +26,7 @@ class TelegramProfileAdmin(ImportExportModelAdmin):
     search_fields = ('chat_id', 'username', 'first_name', 'role')
     resource_class = TelegramProfileResource
 
+
 @admin.register(Archive)
 class ArchiveAdmin(ImportExportModelAdmin):
     list_display = ('short_title', 'author', 'created_at')

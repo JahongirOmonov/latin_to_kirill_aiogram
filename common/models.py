@@ -19,6 +19,16 @@ class TelegramProfile(Profile):
         return self.username if self.username else self.first_name
 
 
+class BannedUser(models.Model):
+    telegram_profile = models.ForeignKey(TelegramProfile, on_delete=models.CASCADE, related_name='bans')
+    reason = models.TextField()
+    banned_until = models.DateTimeField()  # Qachongacha ban bo'lishi kerak
+    banned_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.telegram_profile.first_name
+
+
 
 
 class Language(BaseModel):
@@ -68,6 +78,7 @@ class RequiredChannels(BaseModel):
     title = models.CharField(max_length=255, verbose_name="Channel Name")
     url = models.URLField(max_length=511, unique=True, help_text="For example: https://t.me/anychannel")
     username = models.CharField(max_length=255, editable=False, blank=True, null=True)
+    chat_id = models.CharField(max_length=255, blank=True, null=True)
 
     objects = models.Manager()
 

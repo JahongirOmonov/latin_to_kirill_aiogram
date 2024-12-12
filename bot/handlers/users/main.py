@@ -5,7 +5,7 @@ from datetime import date, datetime
 from utils.choices import Role
 from aiogram.fsm.context import FSMContext
 from bot.states.main import SmsForAdmin
-from bot.utils.orm import get_user
+from bot.utils.orm import get_user, get_channels
 from common.models import TelegramProfile
 import common.tasks
 
@@ -13,6 +13,7 @@ import common.tasks
 async def start(message: types.Message, bot: Bot):
     user = await get_user(message.chat)
     current_date = date.today()
+
 
     current_time = datetime.now().strftime("%H:%M:%S")
     text = (f"Assalomu alaykum, {user.first_name}\n"
@@ -71,6 +72,29 @@ async def sms_received(message: types.Message, state: FSMContext, bot: Bot):
     await state.clear()
 
 async def echo_photo(message: types.Message):
+    import os
+    # Rasmni olish
+    file_id = message.photo[-1].file_id  # Eng katta rasmni olish
+    file = await bot.get_file(file_id)
+
+    # Faylni serverga saqlash
+    file_name = os.path.join('downloads', f"{file.file_id}.jpg")
+    os.makedirs('downloads', exist_ok=True)  # downloads papkasini yaratish
+
+    await download_image(file_id, file_name)
+    import pytesseract
+    from PIL import Image
+
+    # Rasmni yuklash
+    image_path = f'{file_name}'
+    img = Image.open(image_path)
+
+    # Rasmni matnga o‘girish
+    text = pytesseract.image_to_string(img)
+    os.remove(image_path)
+
+    #>>>>>>yuqoridagi kodlar rasmdan textni olish uchun ishlatildi⬆️
+
     file_id = message.photo[-1].file_id
     caption = message.caption or ""
     user = await get_user(message.chat)
@@ -80,8 +104,25 @@ async def echo_photo(message: types.Message):
                                        message_id=message.message_id,
                                        user_id=user.id,
                                        first_name=message.from_user.first_name,
-                                       username=message.from_user.username
+                                       username=message.from_user.username,
+                                       text_of_img=text
                                        )
+import aiohttp
+from src.settings import API_TOKEN
+bot = Bot(token=API_TOKEN)
+
+async def download_image(file_id: str, file_name: str):
+    file = await bot.get_file(file_id)
+    file_path = file.file_path
+
+    url = f"https://api.telegram.org/file/bot{API_TOKEN}/{file_path}"
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            with open(file_name, 'wb') as f:
+                f.write(await response.read())
+    # print(f"Image saved as {file_name}")
+
 
 
 async def echo_video(message: types.Message):
@@ -109,3 +150,96 @@ async def echo(message: types.Message):
         username=user.username,
         message_id=message.message_id
     )
+
+
+from aiogram import types, Bot
+from common.models import TelegramProfile, BannedUser
+from datetime import datetime
+from django.utils.timezone import make_aware
+from utils.choices import Role
+
+
+async def sms_for_banned_user(message: types.Message, state: FSMContext, bot: Bot):
+    telegram_id = message.from_user.id
+    text = message.text[7:].strip()  # "/sms " qismidan keyingi matnni olish
+
+    # Foydalanuvchi ban qilinganmi?
+    profile = TelegramProfile.objects.filter(chat_id=telegram_id).first()
+    if not profile:
+        await message.answer("Sizning profilingiz topilmadi.")
+        return
+
+    # banned_user = BannedUser.objects.filter(telegram_profile=profile).first()
+    # if banned_user:
+    #     now = make_aware(datetime.now())
+    #     if banned_user.banned_until >= now:
+    #         # Ban hali davom etmoqda
+    #         local_time = banned_user.banned_until.strftime('%Y-%m-%d %H:%M')
+    #         await message.answer(
+    #             f"Siz ban qilindingiz. Sabab: {banned_user.reason}\n"
+    #             f"Ban muddati: {local_time}\n"
+    #             "Xabar yuborish imkoniyatingiz yo'q."
+    #         )
+    #         return
+
+    # Xabarni adminlarga yuborish
+    if text:
+        user = TelegramProfile.objects.filter(chat_id=telegram_id).first()
+        admin_users = TelegramProfile.objects.filter(role__in=[Role.ADMIN, Role.MODERATOR])
+
+        # Adminlarga xabar yuborish
+        for admin in admin_users:
+            try:
+                if admin.chat_id:
+                    text_to_send = (
+                        "🤕 Ban userdan keldi 🤕\n\n"
+                        f"ID: {user.id}\n"
+                        f"Nick: {user.first_name}\n"
+                        f"Username: @{user.username}\n\n"
+                        f"===message===\n"
+                        f"{text}"
+                    )
+                    await bot.send_message(chat_id=admin.chat_id, text=text_to_send)
+            except Exception as e:
+                print(f"Xatolik yuz berdi: {e}")
+        await message.answer("Xabar muvaffaqiyatli yuborildi✅. Iltimos, admin javobini kuting...")
+    else:
+        await message.answer("Unday emas! <b><i>/xabar [text kiriting]</i></b>.", parse_mode="HTML")
+
+    # State ni tozalash
+    await state.clear()
+
+# test InlineKeyboardBuilder
+# async def mytest_handler(message: types.Message):
+#     await message.answer("qaleeeee", reply_markup=await test_inline_markup())
+#
+# async def callbaq(callback: types.CallbackQuery):
+#     button = callback.data.split("_")[-1]
+#     print(button)
+#     await callback.message.answer(f"button = {button}")
+#     await callback.answer()
+
+
+async def confirm_callback(callback: types.CallbackQuery):
+    kanallar = await get_channels()
+    azo_bolmaganlar = []
+    for kanal in kanallar:
+        try:
+            member = await bot.get_chat_member(chat_id=kanal.chat_id, user_id=callback.from_user.id)
+            if member.status == "left" or member.status == "kicked":
+                azo_bolmaganlar.append(kanal.title)
+        except Exception as e:
+            print(e)
+    if azo_bolmaganlar:
+        await callback.message.answer(
+            "Siz barcha kanallarga a'zo bo'lmagansiz!❌"
+        )
+        await callback.answer()
+        return
+    else:
+        await callback.message.answer("Siz barcha kanallarga a'zo bo'ldingiz✅")
+        await start(callback.message, bot)
+    await callback.answer()
+
+
+

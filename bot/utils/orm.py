@@ -1,7 +1,7 @@
 from aiogram import types
 from aiogram.types import Chat, User
 from utils.choices import Role
-from common.models import TelegramProfile, Archive
+from common.models import TelegramProfile, Archive, RequiredChannels
 
 
 async def get_user(chat: Chat | User):
@@ -25,5 +25,10 @@ async def save_archive(message: types.Message):
     user = await get_user(message.chat)
     archive = Archive.objects.create(title=message.chat.title, author=user)
     return archive
+
+async def get_channels():
+    return RequiredChannels.objects.all()
+
+
 
 
