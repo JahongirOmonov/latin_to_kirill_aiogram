@@ -44,6 +44,8 @@ class BanMiddleware(BaseMiddleware):
                     )
                     return  # Stop further processing
                 else:
+                    await message.answer(f"Sizning ban muddatingiz o'z nihoyasiga yetdi.\n"
+                                         f"Endi bemalol botdan foydalanishingiz mumkin😊")
                     # Ban has expired, remove the ban
                     banned_user.delete()
 
