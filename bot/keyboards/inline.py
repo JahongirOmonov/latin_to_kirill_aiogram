@@ -5,11 +5,11 @@ async def get_subscribed_channels_markup(channel_list: list):
     for channel in channel_list:
         markup.add(
             InlineKeyboardButton(
-                text=channel.title,
+                text=f"🔉 {channel.title}",
                 url=channel.url
             )
         )
-    markup.add(InlineKeyboardButton(text="Tasdiqlash", callback_data="confirm_channels"))
+    markup.add(InlineKeyboardButton(text="Tasdiqlash ✅", callback_data="confirm_channels"))
     return markup.adjust(*(1,)).as_markup()
 
 # < test InlineKeyboardBuilder

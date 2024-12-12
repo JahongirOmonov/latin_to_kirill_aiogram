@@ -84,9 +84,10 @@ class RequiredChannelsMiddleware(BaseMiddleware):
                 continue
 
         if self.noneSubscribed:
-            await message.answer("Siz kanalga obuna bo'lmagansiz", reply_markup=await inline.get_subscribed_channels_markup(self.noneSubscribed))
+            await message.answer("🚫 Siz kanalga obuna bo'lmagansiz! 🚫", reply_markup=await inline.get_subscribed_channels_markup(self.noneSubscribed))
             return
         return await handler(event, data)
+
 
 
 
